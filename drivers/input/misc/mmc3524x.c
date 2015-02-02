@@ -133,6 +133,7 @@ static struct sensors_classdev sensors_cdev = {
     .resolution = "0.09765625",                                      //1024
 	.sensor_power = "0.35",
 	.min_delay = 10000,
+	.max_delay = 10000,
 	.fifo_reserved_event_count = 0,
 	.fifo_max_event_count = 0,
 	.enabled = 0,
