@@ -1061,7 +1061,7 @@ static int mmc3524x_probe(struct i2c_client *client, const struct i2c_device_id 
 	memsic->cdev = sensors_cdev;
 	memsic->cdev.sensors_enable = mmc3524x_set_enable;
 	memsic->cdev.sensors_poll_delay = mmc3524x_set_poll_delay;
-	res = sensors_classdev_register(&client->dev, &memsic->cdev);
+	res = sensors_classdev_register(&memsic->idev->dev, &memsic->cdev);
 	if (res) {
 		dev_err(&client->dev, "sensors class register failed.\n");
 		goto out_register_classdev;
