@@ -367,6 +367,7 @@ Output:
 ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len, loff_t *off)
 {
     s32 ret = 0;
+    u8 *dataptr = NULL;
     
     GTP_DEBUG_FUNC();
     GTP_DEBUG_ARRAY((u8*)buff, len);
@@ -375,7 +376,8 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len
     if(ret)
     {
         GTP_ERROR("copy_from_user failed.");
-        return -EPERM;
+        ret = -EACCES;
+		goto exit;
     }
 
     
@@ -393,7 +395,8 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len
         if(ret)
         {
             GTP_ERROR("copy_from_user failed.");
-            return -EPERM;
+            ret = -EINVAL;
+			goto exit;
         }
         memcpy(&cmd_head.data[GTP_ADDR_LENGTH - cmd_head.addr_len], cmd_head.addr, cmd_head.addr_len);
 
@@ -405,7 +408,8 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len
             if (FAIL == comfirm())
             {
                 GTP_ERROR("[WRITE]Comfirm fail!");
-                return -EPERM;
+                ret = -EINVAL;
+				goto exit;
             }
         }
         else if (2 == cmd_head.flag)
@@ -416,7 +420,8 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len
             cmd_head.data_len + cmd_head.addr_len) <= 0)
         {
             GTP_ERROR("[WRITE]Write data failed!");
-            return -EPERM;
+            ret = -EIO;
+			goto exit;
         }
 
         GTP_DEBUG_ARRAY(&cmd_head.data[GTP_ADDR_LENGTH - cmd_head.addr_len],cmd_head.data_len + cmd_head.addr_len);
@@ -431,7 +436,8 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len
         if(ret)
         {
             GTP_ERROR("copy_from_user failed.");
-            return -EPERM;
+            ret = -EINVAL;
+			goto exit;
         }
         memcpy(IC_TYPE, cmd_head.data, cmd_head.data_len);
 
@@ -464,7 +470,8 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len
         if(ret)
         {
             GTP_DEBUG("copy_from_user failed.");
-            return -EPERM;
+            ret = -EINVAL;
+			goto exit;
         }
         if(cmd_head.data[GTP_ADDR_LENGTH])
         {
@@ -482,7 +489,8 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len
     {
         if (FAIL == gup_enter_update_mode(gt_client))
         {
-            return -EPERM;
+            ret = -EBUSY;
+			goto exit;
         }
     }
     else if (13 == cmd_head.wr)//Leave update mode!
@@ -498,13 +506,20 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len
 
         if (FAIL == gup_update_proc((void*)cmd_head.data))
         {
-            return -EPERM;
+            ret = -EBUSY;
+			goto exit;
         }
     }
 
 #endif
 
-    return len;
+exit:
+	dataptr = cmd_head.data;
+	memset(&cmd_head, 0, sizeof(cmd_head));
+	cmd_head.wr = 0xFF;
+	cmd_head.data = dataptr;
+
+	return ret;
 }
 
 /*******************************************************    
