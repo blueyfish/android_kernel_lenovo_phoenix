@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014,2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -778,6 +778,14 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		rc = msm_isp_smmu_attach(vfe_dev->buf_mgr, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
+	case VIDIOC_MSM_ISP_BUF_DONE:
+		mutex_lock(&vfe_dev->core_mutex);
+		rc = msm_isp_user_buf_done(vfe_dev, arg);
+		mutex_unlock(&vfe_dev->core_mutex);
+		break;
+	case MSM_SD_NOTIFY_FREEZE:
+		vfe_dev->isp_sof_debug = 0;
+		break;
 	case MSM_SD_SHUTDOWN:
 		while (vfe_dev->vfe_open_cnt != 0)
 			msm_isp_close_node(sd, NULL);
@@ -822,6 +830,35 @@ static long msm_isp_ioctl_compat(struct v4l2_subdev *sd,
 		rc = msm_isp_proc_cmd_list(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->realtime_mutex);
 		break;
+	}
+	case VIDIOC_MSM_ISP_BUF_DONE: {
+		struct msm_isp_event_data buf_event;
+		struct msm_isp_event_data32 *buf_event32;
+		memset(&buf_event, 0, sizeof(buf_event));
+		buf_event32 =
+		  (struct msm_isp_event_data32 *)arg;
+		buf_event.input_intf = buf_event32->input_intf;
+		buf_event.frame_id = buf_event32->frame_id;
+		buf_event.timestamp.tv_sec =
+				buf_event32->timestamp.tv_sec;
+		buf_event.timestamp.tv_usec =
+				buf_event32->timestamp.tv_usec;
+		buf_event.mono_timestamp.tv_sec =
+				buf_event32->mono_timestamp.tv_sec;
+		buf_event.mono_timestamp.tv_usec =
+				buf_event32->mono_timestamp.tv_usec;
+		buf_event.u.buf_done.session_id =
+		  buf_event32->u.buf_done.session_id;
+		buf_event.u.buf_done.stream_id =
+		  buf_event32->u.buf_done.stream_id;
+		buf_event.u.buf_done.output_format =
+			buf_event32->u.buf_done.output_format;
+		buf_event.u.buf_done.buf_idx =
+			buf_event32->u.buf_done.buf_idx;
+		buf_event.u.buf_done.handle =
+			buf_event32->u.buf_done.handle;
+		cmd = VIDIOC_MSM_ISP_BUF_DONE;
+		return msm_isp_ioctl_unlocked(sd, cmd, &buf_event);
 	}
 	default:
 		return msm_isp_ioctl_unlocked(sd, cmd, arg);
@@ -1446,8 +1483,6 @@ void msm_isp_update_error_frame_count(struct vfe_device *vfe_dev)
 {
 	struct msm_vfe_error_info *error_info = &vfe_dev->error_info;
 	error_info->info_dump_frame_count++;
-	if (error_info->info_dump_frame_count == 0)
-		error_info->info_dump_frame_count++;
 }
 
 void msm_isp_process_error_info(struct vfe_device *vfe_dev)
@@ -1556,6 +1591,7 @@ static void msm_isp_process_overflow_irq(
 		*irq_status0 = 0;
 		*irq_status1 = 0;
 
+		memset(&error_event, 0, sizeof(error_event));
 		error_event.frame_id =
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
 		error_event.u.error_info.error_mask = 1 << ISP_WM_BUS_OVERFLOW;
@@ -1572,8 +1608,7 @@ void msm_isp_reset_burst_count_and_frame_drop(
 		stream_info->stream_type != BURST_STREAM) {
 		return;
 	}
-	if (stream_info->stream_type == BURST_STREAM &&
-		stream_info->num_burst_capture != 0) {
+	if (stream_info->num_burst_capture != 0) {
 		framedrop_period = msm_isp_get_framedrop_period(
 		   stream_info->frame_skip_pattern);
 		stream_info->burst_frame_count =
@@ -1749,6 +1784,7 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	}
 
 	vfe_dev->reset_pending = 0;
+	vfe_dev->isp_sof_debug = 0;
 
 	if (vfe_dev->hw_info->vfe_ops.core_ops.init_hw(vfe_dev) < 0) {
 		pr_err("%s: init hardware failed\n", __func__);

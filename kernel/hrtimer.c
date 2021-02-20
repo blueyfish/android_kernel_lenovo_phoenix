@@ -585,8 +585,8 @@ static inline int hrtimer_hres_active(void)
 static void
 hrtimer_force_reprogram(struct hrtimer_cpu_base *cpu_base, int skip_equal)
 {
-
 	ktime_t expires_next = __hrtimer_get_next_event(cpu_base);
+
 	if (skip_equal && expires_next.tv64 == cpu_base->expires_next.tv64)
 		return;
 
@@ -1350,7 +1350,6 @@ retry:
 			 * are right-of a not yet expired timer, because that
 			 * timer will have to trigger a wakeup anyway.
 			 */
-
 			if (basenow.tv64 < hrtimer_get_softexpires_tv64(timer))
 				break;
 
