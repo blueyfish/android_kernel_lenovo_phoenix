@@ -42,7 +42,7 @@
 #include "wniApi.h"
 #include "sirCommon.h"
 
-#include "wniCfgSta.h"
+#include "wniCfg.h"
 #include "pmmApi.h"
 #include "cfgApi.h"
 
@@ -740,12 +740,15 @@ limCleanupRxPath(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESession psessionE
     pMac->lim.gLimNumRxCleanup++;
 #endif
 
-    if (psessionEntry->limSmeState == eLIM_SME_JOIN_FAILURE_STATE) {
-        retCode = limDelBss( pMac, pStaDs, psessionEntry->bssIdx, psessionEntry);
+    /* Do DEL BSS or DEL STA only if ADD BSS was success */
+    if (!psessionEntry->addBssfailed)
+    {
+        if (psessionEntry->limSmeState == eLIM_SME_JOIN_FAILURE_STATE)
+           retCode = limDelBss( pMac, pStaDs,
+                          psessionEntry->bssIdx, psessionEntry);
+        else
+           retCode = limDelSta( pMac, pStaDs, true, psessionEntry);
     }
-    else
-        retCode = limDelSta( pMac, pStaDs, true, psessionEntry);
-
     return retCode;
 
 } /*** end limCleanupRxPath() ***/
@@ -2489,7 +2492,7 @@ limAddSta(
     {
         /* peer STA get the LDPC capability from pStaDs, which populated from 
          * HT/VHT capability*/
-        if(pMac->lim.disableLDPCWithTxbfAP)
+        if(pAddStaParams->vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP)
         {
             pAddStaParams->htLdpcCapable = 0;
             pAddStaParams->vhtLdpcCapable = 0;
@@ -3802,7 +3805,7 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
             }
 
             pAddBssParams->staContext.maxAmpduSize= pAssocRsp->HTCaps.maxRxAMPDUFactor;
-            if( pMac->lim.disableLDPCWithTxbfAP )
+            if( pAddBssParams->staContext.vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP )
             {
                 pAddBssParams->staContext.htLdpcCapable = 0;
                 pAddBssParams->staContext.vhtLdpcCapable = 0;
@@ -4245,7 +4248,7 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
             }
 
             pAddBssParams->staContext.maxAmpduSize= pBeaconStruct->HTCaps.maxRxAMPDUFactor;
-            if( pMac->lim.disableLDPCWithTxbfAP )
+            if( pAddBssParams->staContext.vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP )
             {
                 pAddBssParams->staContext.htLdpcCapable = 0;
                 pAddBssParams->staContext.vhtLdpcCapable = 0;
