@@ -138,6 +138,22 @@ static char *static_command_line;
 static char *execute_command;
 static char *ramdisk_execute_command;
 
+/* Check if the device is in charger mode */ 
+bool offline_charger_mode;
+
+static int set_charger_mode(char *str)
+{
+    if (strcmp("charger", str) == 0)
+        offline_charger_mode = true;
+    else
+        offline_charger_mode = false;
+
+    printk(KERN_NOTICE "Device in offline charging mode = %d\n", offline_charger_mode);
+    return 0;
+}
+__setup("androidboot.mode=", set_charger_mode);
+EXPORT_SYMBOL(offline_charger_mode);
+
 /*
  * If set, this is an indication to the drivers that reset the underlying
  * device before going ahead with the initialization otherwise driver might
