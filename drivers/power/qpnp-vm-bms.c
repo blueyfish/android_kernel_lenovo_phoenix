@@ -37,6 +37,7 @@
 #include <linux/batterydata-interface.h>
 #include <linux/qpnp-revid.h>
 #include <uapi/linux/vm_bms.h>
+#include <linux/proc_fs.h>
 
 #define _BMS_MASK(BITS, POS) \
 	((unsigned char)(((1 << (BITS)) - 1) << (POS)))
@@ -122,6 +123,9 @@
 #define MIN_SOC_UUC			3
 
 #define QPNP_VM_BMS_DEV_NAME		"qcom,qpnp-vm-bms"
+
+static int boot_completed;
+extern bool offline_charger_mode;
 
 /* indicates the state of BMS */
 enum {
@@ -1670,6 +1674,16 @@ static int report_state_of_charge(struct qpnp_bms_chip *chip)
 		soc = report_voltage_based_soc(chip);
 	else
 		soc = report_vm_bms_soc(chip);
+
+		/*
+		 * Don't report 0% before the machine is fully booted,
+		 * doing this will make the machine shutdown upon bootup.
+		 */
+		if (soc < 1 && boot_completed == 0 && (!offline_charger_mode))
+		{
+			soc = 1;
+			printk("boot has not completed yet, don't report soc\n");
+		}
 
 	mutex_unlock(&chip->last_soc_mutex);
 
@@ -3543,6 +3557,59 @@ unregister_chrdev:
 	return rc;
 }
 
+#define boot_completed_PROC_FILE	"boot_completed_prop"
+static struct proc_dir_entry *boot_completed_proc_file;
+static int boot_completed_proc_read(struct seq_file *buf, void *v)
+{
+	seq_printf(buf, "boot_completed: <%d>\n", boot_completed);
+	return 0;
+}
+
+static int boot_completed_proc_open(struct inode *inode, struct  file *file)
+{
+	return single_open(file, boot_completed_proc_read, NULL);
+}
+
+static ssize_t boot_completed_proc_write(struct file *filp, const char __user *buff,
+		size_t len, loff_t *data)
+{
+	int val = 0;
+
+	char messages[256] = { '\0' };
+
+	if (len > 256) {
+		len = 256;
+	}
+
+	if (copy_from_user(messages, buff, len)) {
+		return -EFAULT;
+	}
+
+	val = (int)simple_strtol(messages, NULL, 10);
+
+	printk("boot_completed_prop: %d\n", val);
+		if (val) {
+			printk("set boot_completed to 1\n");
+			boot_completed = 1;
+			if (the_chip->bms_psy_registered)
+				power_supply_changed(&the_chip->bms_psy);
+		}
+	return len;
+}
+
+static const struct file_operations boot_completed_fops = {
+	.owner = THIS_MODULE,
+	.open = boot_completed_proc_open,
+	.write = boot_completed_proc_write,
+	.read = seq_read,
+	.release = single_release,
+};
+
+void static create_boot_completed_proc_file(void)
+{
+	boot_completed_proc_file = proc_create(boot_completed_PROC_FILE, 0644, NULL, &boot_completed_fops);
+}
+
 static int qpnp_vm_bms_probe(struct spmi_device *spmi)
 {
 	struct qpnp_bms_chip *chip;
@@ -3648,6 +3715,7 @@ static int qpnp_vm_bms_probe(struct spmi_device *spmi)
 	bms_load_hw_defaults(chip);
 
 	if (is_battery_present(chip)) {
+		create_boot_completed_proc_file();
 		rc = setup_vbat_monitoring(chip);
 		if (rc) {
 			pr_err("fail to configure vbat monitoring rc=%d\n",
