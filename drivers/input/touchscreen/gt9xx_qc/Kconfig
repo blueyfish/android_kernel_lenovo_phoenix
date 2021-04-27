@@ -2,9 +2,9 @@
 # Goodix GT9xx Touchscreen driver
 #
 
-config GT9XX_TOUCHPANEL_LENOVO_DRIVER
-	tristate "Goodix GT9xx touchpanel (Lenovo variant) driver"
-	depends on TOUCHSCREEN_GT9XX_LENOVO
+config GT9XX_TOUCHPANEL_QC_DRIVER
+	tristate "Goodix GT9xx touchpanel (Qunchuang variant) driver"
+	depends on TOUCHSCREEN_GT9XX_QC
 	default n
 	help
 	  This is the main file for touchpanel driver for Goodix GT9xx
@@ -18,9 +18,9 @@ config GT9XX_TOUCHPANEL_LENOVO_DRIVER
 	  To compile this driver as a module, choose M here: the
 	  module will be called gt9xx_update.
 
-config GT9XX_TOUCHPANEL_LENOVO_UPDATE
-	tristate "Goodix GT9xx touchpanel (Lenovo variant) auto update support"
-	depends on GT9XX_TOUCHPANEL_LENOVO_DRIVER
+config GT9XX_TOUCHPANEL_QC_UPDATE
+	tristate "Goodix GT9xx touchpanel (Qunchuang variant) auto update support"
+	depends on GT9XX_TOUCHPANEL_QC_DRIVER
 	default n
 	help
 	  This enables support for firmware update for Goodix GT9xx
@@ -34,9 +34,9 @@ config GT9XX_TOUCHPANEL_LENOVO_UPDATE
 	  To compile this driver as a module, choose M here: the
 	  module will be called gt9xx_update.
 
-config GT9XX_TOUCHPANEL_LENOVO_DEBUG
-	tristate "Goodix GT9xx (Lenovo variant) Tools for debuging"
-	depends on GT9XX_TOUCHPANEL_LENOVO_DRIVER
+config GT9XX_TOUCHPANEL_QC_DEBUG
+	tristate "Goodix GT9xx (Qunchuang variant) Tools for debuging"
+	depends on GT9XX_TOUCHPANEL_QC_DRIVER
 	default n
 	help
 	  This is application debug interface support for Goodix GT9xx
