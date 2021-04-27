@@ -1,0 +1,47 @@
+/* Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&spmi_bus {
+	qcom,pm8916@0 {
+		pm8916_pon: qcom,power-on@800 {
+			qcom,pon_1 {
+				/delete-property/ qcom,s1-timer;
+				/delete-property/ qcom,s2-type;
+				qcom,s1-timer = <6720>;
+				qcom,s2-type = <2>;
+			};
+		};
+		pm8916_rtc: qcom,pm8916_rtc {
+			/delete-property/ qcom,qpnp-rtc-alarm-pwrup;
+			qcom,qpnp-rtc-alarm-pwrup = <1>;
+		};
+		/delete-node/ qcom,leds@a100;
+		qcom,leds@c100 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xc100 0x100>;
+			label = "gpio";
+		};
+	};
+	qcom,pm8916@1 {
+		pm8916_tombak_dig: msm8x16_wcd_codec@f000 {
+			mbhc-vdd-vlogic-supply = <&pm8916_l16>;
+			qcom,mbhc-vdd-vlogic-voltage = <2800000 2800000>;
+			qcom,mbhc-vdd-vlogic-current = <55000>;
+			/delete-property/ qcom,cdc-static-supplies;
+			qcom,cdc-static-supplies = "cdc-vdda-h",
+						   "cdc-vdd-px",
+						   "cdc-vdd-pa",
+						   "cdc-vdda-cp",
+						   "mbhc-vdd-vlogic";
+		};
+	};
+};
