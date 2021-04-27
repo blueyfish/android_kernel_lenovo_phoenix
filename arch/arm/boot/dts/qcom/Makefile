@@ -2,7 +2,7 @@ ifeq ($(CONFIG_OF),y)
 
 ifeq ($(CONFIG_MACH_LENOVO),y)
 
-ifeq ($(CONFIG_MACH_LENOVO_PHAB_MSM8939),y)
+ifeq ($(CONFIG_MACH_LENOVO_PHAB),y)
 
 ifeq ($(CONFIG_MACH_PHOENIX),y)
 
