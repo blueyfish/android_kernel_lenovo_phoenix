@@ -1,0 +1,24 @@
+# Lenovo configuration options
+
+config MACH_LENOVO
+	bool "Lenovo device"
+	depends on ARCH_MSM
+	help
+	  Support for Lenovo products
+
+config MACH_LENOVO_PHAB_MSM8939
+	bool "Lenovo PHAB MSM8939"
+	depends on ARCH_MSM8916
+	select MACH_LENOVO
+	help
+	  Support for MSM8939 Lenovo PHAB variants
+
+menu "Lenovo board selection"
+
+config MACH_PHOENIX
+	bool "phoenix board"
+	select MACH_LENOVO_PHAB_MSM8939
+	help
+	  Support for the phoenix variants
+
+endmenu
