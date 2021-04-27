@@ -893,5 +893,11 @@ config SENSORS_BMI160_ENABLE_INT2
 	help
 	 If you say yes here, you get INT2 support for Bosch Sensortec
 	 sensors BMI160.
+
+config SENSORS_HALL
+	bool "hall device"
+	default n
+	help
+	  Enables support for the hall device which used on smart cover.
 endif
 
