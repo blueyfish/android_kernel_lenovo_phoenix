@@ -1051,17 +1051,17 @@ config TOUCHSCREEN_BU21150
 
 	  If unsure, say N.
 
-config TOUCHSCREEN_GT9XX_LENOVO
-	bool "Goodix touchpanel GT9xx series (Lenovo variant)"
+config TOUCHSCREEN_GT9XX_QC
+	bool "Goodix touchpanel GT9xx series (Qunchuang variant)"
 	depends on I2C
 	help
-	  Say Y here if you have a Goodix GT9xx touchscreen (Lenovo variant).
+	  Say Y here if you have a Goodix GT9xx touchscreen (Qunchuang variant).
 	  Gt9xx controllers are multi touch controllers which can
 	  report 5 touches at a time.
 
           If unsure, say N.
 
-source "drivers/input/touchscreen/gt9xx_lenovo/Kconfig"
+source "drivers/input/touchscreen/gt9xx_qc/Kconfig"
 
 config INPUT_MT_WRAPPER
 	tristate "Input Multitouch Wrapper"
