@@ -60,7 +60,6 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/uaccess.h>
-#include <linux/hardware_info.h>
 
 #if GTP_ICS_SLOT_REPORT
     #include <linux/input/mt.h>
@@ -3242,7 +3241,6 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		GTP_INFO("%s:version_info\n",__func__);
 	}else{
 		sprintf(buf,"%x",version_info);
-		hw_info_set(ODMM_HD_INFO_TP,"TP", "GT615", "innolux(QUNCHUANG)", buf, "touch screen mode");
 	}
     printk("%s:E\n",__func__);
     return 0;
