@@ -31,7 +31,6 @@
 			goodix,irq-gpio = <&msm_gpio 13 0x2008>;
 			goodix,display-coords = <0 0 1080 1920>;
 			goodix,panel-coords = <0 0 1080 2098>;
-			goodix,button-map= <139 102 158>;
 			goodix,no-force-update;
 			goodix,i2c-pull-up;
 			goodix,group-id = <1>;
