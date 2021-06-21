@@ -5774,6 +5774,7 @@ static int msm_otg_probe(struct platform_device *pdev)
 				goto remove_phy;
 			}
 
+#ifndef CONFIG_MACH_PHOENIX
 			/* The following code implements switch between the HOST
 			 * mode to device mode when used diferent HW components
 			 * on the same port: USB HUB and the usb jack type B
@@ -5808,6 +5809,7 @@ static int msm_otg_probe(struct platform_device *pdev)
 					    motg->pdata->switch_sel_gpio,
 					    1);
 			}
+#endif
 
 			/* usb_id_gpio to irq */
 			id_irq = gpio_to_irq(motg->pdata->usb_id_gpio);
