@@ -49,6 +49,7 @@
 #define THERM_A_CTRL_REG		0x7
 #define SYSOK_AND_USB3_REG		0x8
 #define OTHER_CTRL_REG			0x9
+#define OTG_TLIM_THERM_REG		0xA
 #define FAULT_INT_REG			0xC
 #define STATUS_INT_REG			0xD
 
@@ -107,6 +108,8 @@
 #define CHG_PIN_CTRL_CHG_ERR_IRQ_MASK		BIT(2)
 #define VARIOUS_FUNC_USB_SUSP_EN_REG_BIT	BIT(6)
 #define VARIOUS_FUNC_USB_SUSP_MASK		BIT(6)
+#define VARIOUS_FUNC_AICL_REG_BIT		0x0
+#define VARIOUS_FUNC_AICL_REG_MASK		BIT(4)
 #define FAULT_INT_HOT_COLD_HARD_BIT		BIT(7)
 #define FAULT_INT_HOT_COLD_SOFT_BIT		BIT(6)
 #define FAULT_INT_INPUT_OV_BIT			BIT(3)
@@ -121,7 +124,12 @@
 #define STATUS_INT_MISSING_BATT_BIT		BIT(1)
 #define STATUS_INT_LOW_BATT_BIT			BIT(0)
 #define THERM_A_THERM_MONITOR_EN_BIT		0x0
+#define THERM_A_THERM_MONITOR_EN_DIS		BIT(4)
 #define THERM_A_THERM_MONITOR_EN_MASK		BIT(4)
+#define THERM_A_SOFT_COLD_LIM_BIT		0x0
+#define THERM_A_SOFT_COLD_LIM_MASK		BIT(3) | BIT(2)
+#define THERM_A_SOFT_HOT_LIM_BIT		0x0
+#define THERM_A_SOFT_HOT_LIM_MASK		BIT(1) | BIT(0)
 #define VFLOAT_MASK				0x3F
 
 /* IRQ status bits */
@@ -251,6 +259,9 @@ struct smb358_charger {
 	bool			jeita_supported;
 	int			charging_disabled_status;
 	int			usb_suspended;
+#ifdef CONFIG_MACH_PHOENIX
+	int			real_usb_limit;
+#endif
 
 	/* power supply */
 	struct power_supply	*usb_psy;
@@ -710,6 +721,10 @@ static int smb358_hw_init(struct smb358_charger *chip)
 	int rc;
 	u8 reg = 0, mask = 0;
 
+#ifdef CONFIG_MACH_PHOENIX
+	u8 temp;
+#endif
+
 	/*
 	 * If the charger is pre-configured for autonomous operation,
 	 * do not apply additonal settings
@@ -735,10 +750,17 @@ static int smb358_hw_init(struct smb358_charger *chip)
 		return rc;
 	}
 	/* setup defaults for PIN_CTRL_REG */
+#ifdef CONFIG_MACH_PHOENIX
+	reg = CHG_PIN_CTRL_USBCS_REG_BIT | CHG_PIN_CTRL_APSD_IRQ_BIT |
+		CHG_PIN_CTRL_CHG_ERR_IRQ_BIT | CHG_PIN_CTRL_CHG_EN_LOW_REG_BIT;
+	mask = CHG_PIN_CTRL_USBCS_REG_MASK | CHG_PIN_CTRL_APSD_IRQ_MASK |
+		CHG_PIN_CTRL_CHG_ERR_IRQ_MASK | CHG_PIN_CTRL_CHG_EN_LOW_PIN_BIT;
+#else
 	reg = CHG_PIN_CTRL_USBCS_REG_BIT | CHG_PIN_CTRL_CHG_EN_LOW_REG_BIT |
 		CHG_PIN_CTRL_APSD_IRQ_BIT | CHG_PIN_CTRL_CHG_ERR_IRQ_BIT;
 	mask = CHG_PIN_CTRL_CHG_EN_MASK | CHG_PIN_CTRL_USBCS_REG_MASK |
 		CHG_PIN_CTRL_APSD_IRQ_MASK | CHG_PIN_CTRL_CHG_ERR_IRQ_MASK;
+#endif
 	rc = smb358_masked_write(chip, CHG_PIN_EN_CTRL_REG, mask, reg);
 	if (rc) {
 		dev_err(chip->dev, "Couldn't set CHG_PIN_EN_CTRL_REG rc=%d\n",
@@ -748,7 +770,12 @@ static int smb358_hw_init(struct smb358_charger *chip)
 
 	/* setup USB suspend and APSD  */
 	rc = smb358_masked_write(chip, VARIOUS_FUNC_REG,
+#ifdef CONFIG_MACH_PHOENIX
+		VARIOUS_FUNC_USB_SUSP_MASK | VARIOUS_FUNC_AICL_REG_MASK,
+		VARIOUS_FUNC_USB_SUSP_EN_REG_BIT | VARIOUS_FUNC_AICL_REG_BIT);
+#else
 		VARIOUS_FUNC_USB_SUSP_MASK, VARIOUS_FUNC_USB_SUSP_EN_REG_BIT);
+#endif
 	if (rc) {
 		dev_err(chip->dev, "Couldn't set VARIOUS_FUNC_REG rc=%d\n",
 				rc);
@@ -765,9 +792,13 @@ static int smb358_hw_init(struct smb358_charger *chip)
 		return rc;
 	}
 	/* Fault and Status IRQ configuration */
+#ifdef CONFIG_MACH_PHOENIX
+	reg = FAULT_INT_INPUT_UV_BIT | FAULT_INT_INPUT_OV_BIT;
+#else
 	reg = FAULT_INT_HOT_COLD_HARD_BIT | FAULT_INT_HOT_COLD_SOFT_BIT
 		| FAULT_INT_INPUT_UV_BIT | FAULT_INT_AICL_COMPLETE_BIT
 		| FAULT_INT_INPUT_OV_BIT;
+#endif
 	rc = smb358_write_reg(chip, FAULT_INT_REG, reg);
 	if (rc) {
 		dev_err(chip->dev, "Couldn't set FAULT_INT_REG rc=%d\n", rc);
@@ -784,11 +815,23 @@ static int smb358_hw_init(struct smb358_charger *chip)
 	}
 	/* setup THERM Monitor */
 	rc = smb358_masked_write(chip, THERM_A_CTRL_REG,
+#ifdef CONFIG_MACH_PHOENIX
+		THERM_A_THERM_MONITOR_EN_MASK | THERM_A_SOFT_COLD_LIM_MASK |
+		THERM_A_SOFT_HOT_LIM_MASK, THERM_A_THERM_MONITOR_EN_DIS |
+		THERM_A_SOFT_COLD_LIM_BIT | THERM_A_SOFT_HOT_LIM_BIT);
+#else
 		THERM_A_THERM_MONITOR_EN_MASK, THERM_A_THERM_MONITOR_EN_BIT);
+#endif
 	if (rc) {
 		dev_err(chip->dev, "Couldn't set THERM_A_CTRL_REG rc=%d\n",
 				rc);
 		return rc;
+	}
+	/* set charger timeout */
+	rc = __smb358_write_reg(chip, STAT_AND_TIMER_CTRL_REG, 0x34);
+	if (rc) {
+		dev_err(chip->dev,
+			"smb358_write Failed: reg=%03X, rc=%d\n", STAT_AND_TIMER_CTRL_REG, rc);
 	}
 	/* set the fast charge current limit */
 	rc = smb358_fastchg_current_set(chip, chip->fastchg_current_max_ma);
@@ -844,6 +887,26 @@ static int smb358_hw_init(struct smb358_charger *chip)
 	if (rc)
 		dev_err(chip->dev, "Couldn't write OTHER_CTRL_REG, rc = %d\n",
 								rc);
+
+#ifdef CONFIG_MACH_PHOENIX
+	/*
+	 * OTG mode control
+	 */
+	rc = smb358_masked_write(chip, OTG_TLIM_THERM_REG, 0x0C,0x04);
+	if (rc)
+		dev_err(chip->dev, "Couldn't write OTG_TLIM_THERM_REG, rc = %d\n",
+								rc);
+	rc = __smb358_read_reg(chip, 0x09, &temp);
+	if (rc)
+		dev_err(chip->dev,
+			"smb358_read Failed: reg=0x09, rc=%d\n", rc);
+
+       temp &= 0x3f;
+	rc = __smb358_write_reg(chip, 0x09, temp);
+	if (rc)
+		dev_err(chip->dev,
+			"smb358_read Failed: reg=0x09, rc=%d\n", rc);
+#endif
 
 	return rc;
 }
@@ -991,11 +1054,15 @@ static int __smb358_path_suspend(struct smb358_charger *chip, bool suspend)
 {
 	int rc;
 
+#ifdef CONFIG_MACH_PHOENIX
+	rc = 0;
+#else
 	rc = smb358_masked_write(chip, CMD_A_REG,
 			CMD_A_CHG_SUSP_EN_MASK,
 				suspend ? CMD_A_CHG_SUSP_EN_BIT : 0);
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't set CMD_A reg, rc = %d\n", rc);
+#endif
 	return rc;
 }
 
@@ -1044,6 +1111,12 @@ static int smb358_set_usb_chg_current(struct smb358_charger *chip,
 		dev_dbg(chip->dev, "%s: Charger in autonmous mode\n", __func__);
 		return 0;
 	}
+
+#ifdef CONFIG_MACH_PHOENIX
+	/* Add for running test */
+	if(chip->real_usb_limit)
+		current_ma = chip->real_usb_limit;
+#endif
 
 	if (current_ma < USB3_MIN_CURRENT_MA && current_ma != 2)
 		current_ma = USB2_MIN_CURRENT_MA;
@@ -1131,6 +1204,10 @@ static int smb358_battery_set_property(struct power_supply *psy,
 					const union power_supply_propval *val)
 {
 	int rc;
+#ifdef CONFIG_MACH_PHOENIX
+	int current_limit = 0;
+	union power_supply_propval prop_val = {0,};
+#endif
 	struct smb358_charger *chip = container_of(psy,
 				struct smb358_charger, batt_psy);
 
@@ -1175,7 +1252,28 @@ static int smb358_battery_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		smb358_charging_disable(chip, USER, !val->intval);
+#ifdef CONFIG_MACH_PHOENIX
+		if (val->intval) {
+			chip->real_usb_limit = 0;
+			rc = chip->usb_psy->get_property(chip->usb_psy,
+					POWER_SUPPLY_PROP_CURRENT_MAX, &prop_val);
+			if (rc)
+				dev_err(chip->dev,
+					"Couldn't read USB current_max property, rc=%d\n", rc);
+			else
+				current_limit = prop_val.intval / 1000;
+
+			dev_info(chip->dev,"enchg chip->real_usn_limit:%d.\n",chip->real_usb_limit);
+		} else {
+			chip->real_usb_limit = 100;
+			current_limit = chip->real_usb_limit;
+		}
+			dev_dbg(chip->dev, "current_limit = %d\n", current_limit);
+			smb358_enable_volatile_writes(chip);
+			smb358_set_usb_chg_current(chip, current_limit);
+#else
 		smb358_path_suspend(chip, USER, !val->intval);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		chip->fake_battery_soc = bound_soc(val->intval);
@@ -1282,11 +1380,18 @@ static int apsd_complete(struct smb358_charger *chip, u8 status)
 		break;
 	}
 
+#ifdef CONFIG_MACH_PHOENIX
+	chip->real_usb_limit = 0;
+#endif
+
 	chip->chg_present = !!status;
 
 	dev_dbg(chip->dev, "APSD complete. USB type detected=%d chg_present=%d",
 						type, chip->chg_present);
 
+#ifdef CONFIG_MACH_PHOENIX
+	if(type != POWER_SUPPLY_TYPE_USB)
+#endif
 	power_supply_set_supply_type(chip->usb_psy, type);
 
 	 /* SMB is now done sampling the D+/D- lines, indicate USB driver */
@@ -1323,6 +1428,10 @@ static int chg_uv(struct smb358_charger *chip, u8 status)
 
 	if (status != 0) {
 		chip->chg_present = false;
+#ifdef CONFIG_MACH_PHOENIX
+		chip->real_usb_limit = 0;
+		smb358_hw_init(chip);
+#endif
 		dev_dbg(chip->dev, "%s updating usb_psy present=%d",
 				__func__, chip->chg_present);
 	/* we can't set usb_psy as UNKNOWN here, will lead USERSPACE issue */
@@ -1780,6 +1889,7 @@ static irqreturn_t smb358_chg_stat_handler(int irq, void *dev_id)
 
 	mutex_lock(&chip->irq_complete);
 
+#ifndef CONFIG_MACH_PHOENIX
 	chip->irq_waiting = true;
 	if (!chip->resume_completed) {
 		dev_dbg(chip->dev, "IRQ triggered before device-resume\n");
@@ -1788,6 +1898,7 @@ static irqreturn_t smb358_chg_stat_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 	chip->irq_waiting = false;
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(handlers); i++) {
 		rc = smb358_read_reg(chip, handlers[i].stat_reg,
@@ -2217,7 +2328,11 @@ static int smb_parse_dt(struct smb358_charger *chip)
 	else
 		chip->bat_present_decidegc = -batt_present_degree_negative;
 
+#ifdef CONFIG_MACH_PHOENIX
+	if (of_get_property(node, "vcc-i2c-supply", NULL)) {
+#else
 	if (of_get_property(node, "qcom,vcc-i2c-supply", NULL)) {
+#endif
 		chip->vcc_i2c = devm_regulator_get(chip->dev, "vcc-i2c");
 		if (IS_ERR(chip->vcc_i2c)) {
 			dev_err(chip->dev,
@@ -2496,6 +2611,11 @@ static int smb358_charger_probe(struct i2c_client *client,
 	chip->usb_psy = usb_psy;
 	chip->fake_battery_soc = -EINVAL;
 
+#ifdef CONFIG_MACH_PHOENIX
+	/* Add for running test */
+	chip->real_usb_limit = 0;
+#endif
+
 	/* early for VADC get, defer probe if needed */
 	chip->vadc_dev = qpnp_get_vadc(chip->dev, "chg");
 	if (IS_ERR(chip->vadc_dev)) {
@@ -2568,7 +2688,9 @@ static int smb358_charger_probe(struct i2c_client *client,
 	chip->batt_psy.supplied_to = pm_batt_supplied_to;
 	chip->batt_psy.num_supplicants = ARRAY_SIZE(pm_batt_supplied_to);
 
+#ifdef CONFIG_MACH_PHOENIX
 	chip->resume_completed = true;
+#endif
 
 	rc = power_supply_register(chip->dev, &chip->batt_psy);
 	if (rc < 0) {
@@ -2586,6 +2708,15 @@ static int smb358_charger_probe(struct i2c_client *client,
 		goto fail_regulator_register;
 	}
 
+#ifdef CONFIG_MACH_PHOENIX
+	rc = smb358_masked_write(chip, CMD_A_REG,
+							CMD_A_CHG_SUSP_EN_MASK, 0x00);
+	if (rc) {
+			dev_err(chip->dev, "Couldn't Clear SUS State rc=%d\n",
+							rc);
+	}
+#endif
+
 	rc = smb358_hw_init(chip);
 	if (rc) {
 		dev_err(&client->dev,
@@ -2595,6 +2726,14 @@ static int smb358_charger_probe(struct i2c_client *client,
 
 #ifdef SMB358_LEDS
 	smb358_led_init(chip);
+#endif
+
+#ifdef CONFIG_MACH_PHOENIX
+	rc = __smb358_write_reg(chip, STAT_AND_TIMER_CTRL_REG, 0x34);
+	if (rc) {
+		dev_err(chip->dev,
+			"smb358_write Failed: reg=%03X, rc=%d\n", STAT_AND_TIMER_CTRL_REG, rc);
+	}
 #endif
 
 	rc = determine_initial_state(chip);
@@ -2754,13 +2893,21 @@ static int smb358_suspend(struct device *dev)
 
 	/* enable wake up IRQs */
 	rc = smb358_write_reg(chip, FAULT_INT_REG,
+#ifdef CONFIG_MACH_PHOENIX
+			FAULT_INT_INPUT_UV_BIT);
+#else
 			FAULT_INT_HOT_COLD_HARD_BIT | FAULT_INT_INPUT_UV_BIT);
+#endif
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't set fault_irq_cfg rc = %d\n", rc);
 
 	rc = smb358_write_reg(chip, STATUS_INT_REG,
+#ifdef CONFIG_MACH_PHOENIX
+			STATUS_INT_LOW_BATT_BIT | STATUS_INT_MISSING_BATT_BIT | STATUS_INT_INOK_BIT |
+#else
 			STATUS_INT_LOW_BATT_BIT | STATUS_INT_MISSING_BATT_BIT |
 			STATUS_INT_CHGING_BIT | STATUS_INT_INOK_BIT |
+#endif
 			STATUS_INT_OTG_DETECT_BIT | STATUS_INT_CHG_INHI_BIT);
 	if (rc < 0)
 		dev_err(chip->dev,
@@ -2850,7 +2997,9 @@ static struct i2c_driver smb358_charger_driver = {
 		.name		= "smb358-charger",
 		.owner		= THIS_MODULE,
 		.of_match_table = smb358_match_table,
+#ifdef CONFIG_MACH_PHOENIX
 		.pm		= &smb358_pm_ops,
+#endif
 	},
 	.probe		= smb358_charger_probe,
 	.remove		= smb358_charger_remove,
