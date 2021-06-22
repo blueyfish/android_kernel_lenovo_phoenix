@@ -90,6 +90,7 @@
 		regulator-name = "smb358_otg_vreg";
 		qcom,fastchg-current-max-ma = <1800>;
 		qcom,iterm-ma = <100>;
+		qcom,iterm-disabled;
 		qcom,bms-psy-name = "bms";
 		qcom,hot-bat-decidegc = <500>;
 		qcom,cold-bat-decidegc = <0>;
