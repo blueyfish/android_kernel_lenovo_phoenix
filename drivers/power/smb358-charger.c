@@ -2509,7 +2509,7 @@ static void smb358_led_set(struct led_classdev *led_cdev,
 {
 	struct smb358_led *led_chgdev;
 	led_chgdev = container_of(led_cdev, struct smb358_led, cdev);
-	printk("%s: Set %s as LED brightness.\n", __func__, led_cdev->name);
+	printk("%s: Enable %s.\n", __func__, led_cdev->name);
 	if (value < LED_OFF) {
 		printk("%s: Invalid brightness set.\n", __func__);
 		return;
