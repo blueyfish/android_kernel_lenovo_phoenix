@@ -432,6 +432,17 @@
 			};
 		};
 
+		gpio_led_pins {
+			qcom,pins = <&gp 119>, <&gp 8>;
+			qcom,num-grp-pins = <2>;
+			label = "gpio-led-pins";
+			gpio_led_off: led_off {
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
 		/* add pingrp for touchscreen */
 		pmx_ts_int_active {
 			qcom,pins = <&gp 13>;
