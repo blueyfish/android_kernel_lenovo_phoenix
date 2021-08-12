@@ -28,9 +28,6 @@
 #include <linux/of_gpio.h>
 #include <linux/mutex.h>
 #include <linux/qpnp/qpnp-adc.h>
-#ifdef SMB358_LEDS
-#include <linux/leds.h>
-#endif
 
 #define _SMB358_MASK(BITS, POS) \
 	((unsigned char)(((1 << (BITS)) - 1) << (POS)))
@@ -188,9 +185,6 @@
 #define SMB_FAST_CHG_CURRENT_MASK	0xE0
 #define SMB358_DEFAULT_BATT_CAPACITY	50
 #define SMB358_BATT_GOOD_THRE_2P5	0x1
-#ifdef SMB358_LEDS
-#define CHG_LED_NUM		2
-#endif
 
 enum {
 	USER	= BIT(0),
@@ -203,13 +197,6 @@ struct smb358_regulator {
 	struct regulator_desc	rdesc;
 	struct regulator_dev	*rdev;
 };
-
-#ifdef SMB358_LEDS
-struct smb358_led {
-	struct led_classdev cdev;
-	int gpio_num;
-};
-#endif
 
 struct smb358_charger {
 	struct i2c_client	*client;
@@ -270,11 +257,6 @@ struct smb358_charger {
 
 	/* otg 5V regulator */
 	struct smb358_regulator	otg_vreg;
-
-#ifdef SMB358_LEDS
-	/* chg led class */
-	struct smb358_led 	chg_led[2];
-#endif
 
 	/* adc_tm paramters */
 	struct qpnp_vadc_chip	*vadc_dev;
@@ -2503,89 +2485,6 @@ static void smb358_debugfs_init(struct smb358_charger *chip)
 }
 #endif
 
-#ifdef SMB358_LEDS
-static void smb358_led_set(struct led_classdev *led_cdev,
-					enum led_brightness value)
-{
-	struct smb358_led *led_chgdev;
-	led_chgdev = container_of(led_cdev, struct smb358_led, cdev);
-	printk("%s: Enable %s.\n", __func__, led_cdev->name);
-	if (value < LED_OFF) {
-		printk("%s: Invalid brightness set.\n", __func__);
-		return;
-	}
-	if (value > led_chgdev->cdev.max_brightness)
-		value = led_chgdev->cdev.max_brightness;
-	if (value == LED_OFF) {
-		gpio_direction_output(led_chgdev->gpio_num, 0);
-		led_chgdev->cdev.brightness = value;
-	} else {
-		gpio_direction_output(led_chgdev->gpio_num, 1);
-		led_chgdev->cdev.brightness = value;
-	}
-}
-
-static enum led_brightness smb358_led_get(struct led_classdev *led_cdev)
-{
-	struct smb358_led *led_chgdev;
-	led_chgdev = container_of(led_cdev, struct smb358_led, cdev);
-	printk("%s: Get %s LED brightness %d.\n",__func__,led_chgdev->cdev.name, led_chgdev->cdev.brightness);
-	return led_chgdev->cdev.brightness;
-}
-
-static void smb358_led_init(struct smb358_charger *chip)
-{
-	int rc, i, ret;
-	static struct led_classdev green_led;
-	static struct led_classdev blue_led;
-	int green_gpio;
-	int blue_gpio;
-	struct device_node *node = chip->dev->of_node;
-	/* init chg green and blue gpio */
-	printk("%s: Initialize SMB358 LEDs.\n", __func__);
-	green_gpio = of_get_named_gpio_flags(node,
-			"qcom,chg-green", 0, NULL);
-	ret = gpio_request(green_gpio,"green");
-	if (!gpio_is_valid(green_gpio)){
-		dev_info(chip->dev, "Invalid green_gpio.\n");
-		return;
-	}
-	gpio_direction_output(green_gpio, 0);
-	blue_gpio = of_get_named_gpio_flags(node,
-			"qcom,chg-blue", 0, NULL);
-	ret = gpio_request(blue_gpio,"blue");
-	if (!gpio_is_valid(blue_gpio)){
-		dev_info(chip->dev, "Invalid blue_gpio.\n");
-		return;
-	}
-	gpio_direction_output(blue_gpio, 0);
-	/* init green led API. */
-	green_led.name = "chg_green";
-	green_led.brightness_set = smb358_led_set;
-	green_led.brightness_get = smb358_led_get;
-	green_led.max_brightness = LED_FULL;
-	green_led.brightness = LED_OFF;
-	chip->chg_led[0].cdev = green_led;
-	chip->chg_led[0].gpio_num = green_gpio;
-	/* init blue LED API */
-	blue_led.name = "chg_blue";
-	blue_led.brightness_set = smb358_led_set;
-	blue_led.brightness_get = smb358_led_get;
-	blue_led.max_brightness = LED_FULL;
-	blue_led.brightness = LED_OFF;
-	chip->chg_led[1].cdev = blue_led;
-	chip->chg_led[1].gpio_num = blue_gpio;
-	for(i=0;i < CHG_LED_NUM; i++){
-		rc = led_classdev_register(chip->dev, &chip->chg_led[i].cdev);
-		if (rc) {
-			dev_err(chip->dev, "Unable to register LED %d, rc=%d\n",
-						 chip->chg_led[i].gpio_num, rc);
-			return;
-		}
-	}
-}
-#endif
-
 #define SMB_I2C_VTG_MIN_UV 1800000
 #define SMB_I2C_VTG_MAX_UV 1800000
 static int smb358_charger_probe(struct i2c_client *client,
@@ -2725,10 +2624,6 @@ static int smb358_charger_probe(struct i2c_client *client,
 			"Couldn't intialize hardware rc=%d\n", rc);
 		goto fail_smb358_hw_init;
 	}
-
-#ifdef SMB358_LEDS
-	smb358_led_init(chip);
-#endif
 
 #ifdef CONFIG_MACH_PHOENIX
 	rc = __smb358_write_reg(chip, STAT_AND_TIMER_CTRL_REG, 0x34);

@@ -415,12 +415,6 @@ config SMB358_CHARGER
 	  The driver reports the charger status via the power supply framework.
 	  A charger status change triggers an IRQ via the device STAT pin.
 
-config SMB358_CHARGER_ENABLE_LEDS
-	tristate "SMB358 LEDs"
-	depends on SMB358_CHARGER
-	help
-	  Say Y to include support for SMB358 LEDs.
-
 config BQ27520_TEST_ENABLE
 	bool "Enable BQ27520 Fuel Gauge Chip Test"
 	depends on BATTERY_BQ27520

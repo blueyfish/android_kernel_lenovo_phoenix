@@ -36,7 +36,7 @@
 			status = "okay";
 			qcom,led_gpio_2 {
 				label = "gpio";
-				linux,name = "chg_red";
+				linux,name = "red";
 				linux,default-trigger = "none";
 				qcom,default-state = "off";
 				qcom,max-current = <5>;
@@ -89,6 +89,28 @@
 			linux,code = <115>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_led_off>;
+
+		green {
+			gpios = <&msm_gpio 119 2>;
+			label = "green";
+			linux,default-trigger = "none";
+			default-state = "off";
+			retain-state-suspended;
+		};
+
+		blue {
+			gpios = <&msm_gpio 8 2>;
+			label = "blue";
+			linux,default-trigger = "none";
+			default-state = "off";
 		};
 	};
 };

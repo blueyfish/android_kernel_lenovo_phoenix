@@ -85,8 +85,6 @@
 		qcom,chg-inhibit-disabled;
 		qcom,bms-controlled-charging;
 		qcom,using-pmic-therm;
-		qcom,chg-green = <&msm_gpio 119 2>;
-		qcom,chg-blue = <&msm_gpio 8 2>;
 		regulator-name = "smb358_otg_vreg";
 		qcom,fastchg-current-max-ma = <1800>;
 		qcom,iterm-ma = <100>;
