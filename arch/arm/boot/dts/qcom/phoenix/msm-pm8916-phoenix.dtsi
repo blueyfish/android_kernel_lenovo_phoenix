@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,16 +14,15 @@
 	qcom,pm8916@0 {
 		pm8916_pon: qcom,power-on@800 {
 			qcom,pon_1 {
-				/delete-property/ qcom,s1-timer;
-				/delete-property/ qcom,s2-type;
 				qcom,s1-timer = <6720>;
-				qcom,s2-type = <2>;
+				qcom,s2-type = <7>;
 			};
 		};
+
 		pm8916_rtc: qcom,pm8916_rtc {
-			/delete-property/ qcom,qpnp-rtc-alarm-pwrup;
 			qcom,qpnp-rtc-alarm-pwrup = <1>;
 		};
+
 		/delete-node/ qcom,leds@a100;
 		qcom,leds@c100 {
 			compatible = "qcom,leds-qpnp";
@@ -36,7 +35,6 @@
 			mbhc-vdd-vlogic-supply = <&pm8916_l16>;
 			qcom,mbhc-vdd-vlogic-voltage = <2800000 2800000>;
 			qcom,mbhc-vdd-vlogic-current = <55000>;
-			/delete-property/ qcom,cdc-static-supplies;
 			qcom,cdc-static-supplies = "cdc-vdda-h",
 						   "cdc-vdd-px",
 						   "cdc-vdd-pa",
