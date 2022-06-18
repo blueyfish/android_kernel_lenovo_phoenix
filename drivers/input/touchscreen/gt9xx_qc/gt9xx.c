@@ -109,8 +109,8 @@ s32 gtp_send_cfg(struct i2c_client *client);
 void gtp_int_sync(struct goodix_ts_data *ts, s32 ms);
 static int fb_notifier_callback(struct notifier_block *self,
 				 unsigned long event, void *data);
-static ssize_t gesture_state = 0;//0--off,1--on
-static ssize_t init_gesture = 0;
+static bool gesture_state = false;//0--off,1--on
+static bool init_gesture = false;
 static struct i2c_client *this_client;
 #ifdef SUPPORT_READ_TP_VERSION
 u8 g_sensor_id = -1;
@@ -2948,7 +2948,7 @@ static ssize_t gt6xx_gesture_show(struct device *dev,
 					char *buf)
 {
 	ssize_t num_read_chars = 0;
-	num_read_chars = sprintf(buf, "TP  gesture state::%ld\n", gesture_state);
+	num_read_chars = sprintf(buf, "%d\n", gesture_state);
 	return num_read_chars;
 }
 static ssize_t gt6xx_gesture_store(struct device *dev,
@@ -2957,19 +2957,19 @@ static ssize_t gt6xx_gesture_store(struct device *dev,
 {
 	unsigned long on_off = simple_strtoul(buf, NULL, 10);
 	if(on_off==0){
-	    if(init_gesture == 1){
+	    if(init_gesture){
 			disable_irq_wake(this_client->irq);
-			gesture_state = on_off;
-			init_gesture = 0;
+			gesture_state = false;
+			init_gesture = false;
 			printk("[%s]: ! TP gesture_state disabled by top test node\n", __func__);
 		}else {
 			return count;
 		}
 	}else{
-		if(init_gesture == 0){
+		if(!init_gesture){
 			enable_irq_wake(this_client->irq);
-			gesture_state = on_off;
-			init_gesture =1;
+			gesture_state = true;
+			init_gesture = true;
 			printk("[%s]: TP gesture_state enabled by top test node\n", __func__);
 		}else {
 			return count;
@@ -2977,8 +2977,7 @@ static ssize_t gt6xx_gesture_store(struct device *dev,
 	}
 	return count;
 }
-static DEVICE_ATTR(gesture, (S_IWUSR|S_IRUGO), gt6xx_gesture_show,
-			gt6xx_gesture_store);
+static DEVICE_ATTR(gesture, 0666, gt6xx_gesture_show, gt6xx_gesture_store);
 static int gt6xx_touch_sysfs_init(void)
 {
 	int ret;
