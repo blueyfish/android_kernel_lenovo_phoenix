@@ -705,7 +705,7 @@ static ssize_t ltr559_store_debug_regs(struct device *dev,
 	return (after - buf);
 }
 
-static ssize_t ltr559_show_adc_data(struct device *dev,
+static ssize_t ltr559_show_ps_data(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct ltr559_data *data = dev_get_drvdata(dev);
@@ -731,23 +731,23 @@ static ssize_t ltr559_show_lux_data(struct device *dev,
 	return sprintf(buf, "%d\n", lux);
 }
 
-static DEVICE_ATTR(debug_regs, SYS_AUTHORITY, ltr559_show_debug_regs,
-				ltr559_store_debug_regs);
+static DEVICE_ATTR(als_adc, S_IRUGO, ltr559_show_lux_data, NULL);
+static DEVICE_ATTR(ps_adc, S_IRUGO, ltr559_show_ps_data, NULL);
 static DEVICE_ATTR(enable_als_sensor, SYS_AUTHORITY, ltr559_show_enable_als,
 				ltr559_store_enable_als);
-static DEVICE_ATTR(enable, SYS_AUTHORITY, ltr559_show_enable_ps,
+static DEVICE_ATTR(enable_ps_sensor, SYS_AUTHORITY, ltr559_show_enable_ps,
 				ltr559_store_enable_ps);
 static DEVICE_ATTR(info, S_IRUGO, ltr559_driver_info_show, NULL);
-static DEVICE_ATTR(raw_adc, S_IRUGO, ltr559_show_adc_data, NULL);
-static DEVICE_ATTR(lux_adc, S_IRUGO, ltr559_show_lux_data, NULL);
+static DEVICE_ATTR(debug_regs, SYS_AUTHORITY, ltr559_show_debug_regs,
+				ltr559_store_debug_regs);
 
 static struct attribute *ltr559_attributes[] = {
-		&dev_attr_enable.attr,
-		&dev_attr_info.attr,
+		&dev_attr_als_adc.attr,
+		&dev_attr_ps_adc.attr,
+		&dev_attr_enable_ps_sensor.attr,
 		&dev_attr_enable_als_sensor.attr,
+		&dev_attr_info.attr,
 		&dev_attr_debug_regs.attr,
-		&dev_attr_raw_adc.attr,
-		&dev_attr_lux_adc.attr,
 		NULL,
 };
 
@@ -1323,8 +1323,8 @@ int ltr559_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	input_set_abs_params(data->input_dev_als, ABS_MISC, 0, 65535, 0, 0);
 	input_set_abs_params(data->input_dev_ps, ABS_DISTANCE, 0, 1, 0, 0);
 
-	data->input_dev_als->name = "ltr559-ls";
-	data->input_dev_ps->name = "ltr559-ps";
+	data->input_dev_als->name = "light";
+	data->input_dev_ps->name = "proximity";
 	data->input_dev_als->id.bustype = BUS_I2C;
 	data->input_dev_als->dev.parent =&data->client->dev;
 	data->input_dev_ps->id.bustype = BUS_I2C;
